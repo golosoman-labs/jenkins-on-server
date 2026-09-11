@@ -1,0 +1,8 @@
+# Multibranch supplies the computed-folder trigger used to retry an SCM bootstrap failure.
+# Both it and the GitHub source are pinned to the versions verified on RoboVPS.
+workflow-multibranch:841.vec5b_9e1806ec
+github-branch-source:1983.vfa_27ed961853
+
+# The trait changes the automatic GitHub Branch Source status context before Jenkinsfile
+# retrieval. Pin it because controller rebuilds must not silently change CI semantics.
+github-scm-trait-notification-context:45.v8ef831829589
