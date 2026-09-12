@@ -51,6 +51,9 @@ services:
         volumes:
             - jenkins_home:/var/jenkins_home
             - /var/run/docker.sock:/var/run/docker.sock
+            # Controller-level GitHub status behaviour must also run before a Jenkinsfile is
+            # available, so keep it versioned and mount it independently of the persistent home.
+            - ./jenkins-image/init.groovy.d:/var/jenkins_home/init.groovy.d:ro
             - /opt/apps:/opt/apps
 
 volumes:

@@ -116,6 +116,42 @@ reverse proxy. Порт `50000` (inbound agents) не публикуется, т
 `127.0.0.1:15000:50000`.
 Папка `jenkins-image/` нужна для сборки кастомного образа Jenkins с Docker CLI и Compose plugin.
 
+## Статусы GitHub и повтор SCM
+
+У одного репозитория могут быть две multibranch-джобы: backend и frontend. Jenkins отправляет
+первый GitHub status **до** загрузки `Jenkinsfile`; поэтому один общий контекст
+`continuous-integration/jenkins/branch` опасен: успешный frontend мог скрыть упавший backend.
+
+Образ закрепляет плагин `github-scm-trait-notification-context`, а read-only startup script
+`jenkins-image/init.groovy.d/ci_status_contexts.groovy` идемпотентно задаёт источникам GitHub
+отдельные контексты:
+
+| Multibranch job | GitHub context |
+| --- | --- |
+| `*-backend` | `ci/backend` |
+| `*-frontend` | `ci/frontend` |
+
+Скрипт покрывает `ssau-bot`, `calendar-service` и `admin-console`. При добавлении новой пары
+джоб нужно добавить её в карту `jobContexts` в этом скрипте и выкатить Jenkins. Он также
+настраивает повторное индексирование каждые пять минут. Если GitHub API временно вернул 5xx до
+получения `Jenkinsfile`, следующий scan повторит SCM-запрос и создаст новый build; успешные
+коммиты заново не собираются.
+
+Для применения после изменения образа:
+
+```bash
+docker compose up -d --build jenkins
+docker logs --tail 100 jenkins
+```
+
+В логе должны быть строки `[ci-status-contexts] Configured ...` только при изменении
+конфигурации. Затем в конфигурации каждой multibranch-джобы появится behavior `Custom GitHub
+Notification Context`.
+
+На текущем GitHub Free-плане для приватных репозиториев API не позволяет включить required
+status checks. Раздельные статусы устраняют ложный зелёный aggregate status, но блокирование
+merge по ним потребует GitHub Pro/Team либо изменения видимости репозиториев.
+
 ---
 
 ## Nginx (HTTP шаблон)

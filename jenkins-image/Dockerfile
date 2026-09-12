@@ -13,3 +13,9 @@ RUN apt-get update && apt-get install -y ca-certificates curl gnupg lsb-release 
  && rm -rf /var/lib/apt/lists/*
 
 USER jenkins
+
+# Jenkins sends the first GitHub status while it retrieves the Jenkinsfile, before any
+# Pipeline `post` block can run. Keep the context trait in the image so that this early
+# status is distinct for backend and frontend multibranch jobs as well.
+COPY --chown=jenkins:jenkins plugins.txt /usr/share/jenkins/ref/plugins.txt
+RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
