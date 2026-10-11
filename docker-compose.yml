@@ -47,7 +47,9 @@ services:
             # мусора здесь только тратит такты на координацию потоков, которых нет.
             # MaxMetaspaceSize ограничивает область под классы плагинов: у Jenkins
             # она растёт с каждым плагином и по умолчанию не ограничена вовсе.
-            - JENKINS_JAVA_OPTS=-Xms128m -Xmx320m -XX:+UseSerialGC -XX:MaxMetaspaceSize=160m -Djenkins.install.runSetupWizard=true
+            # Проверяем восстановление ресурсов каждые 5 минут, а не раз в час.
+            # DiskSpaceMonitor остаётся включённым, его пороги не меняются.
+            - JENKINS_JAVA_OPTS=-Xms128m -Xmx320m -XX:+UseSerialGC -XX:MaxMetaspaceSize=160m -Djenkins.install.runSetupWizard=true -Dhudson.node_monitors.AbstractNodeMonitorDescriptor.periodMinutes=5
         volumes:
             - jenkins_home:/var/jenkins_home
             - /var/run/docker.sock:/var/run/docker.sock

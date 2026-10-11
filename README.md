@@ -79,7 +79,7 @@ services:
             # Только JENKINS_JAVA_OPTS — его читает entrypoint образа jenkins/jenkins.
             # JAVA_OPTS не задаём: его могут подхватывать другие JVM-инструменты
             # в сборках. mem_limit выше — жёсткий потолок памяти.
-            - JENKINS_JAVA_OPTS=-Xms128m -Xmx320m -XX:+UseSerialGC -XX:MaxMetaspaceSize=160m -Djenkins.install.runSetupWizard=true
+            - JENKINS_JAVA_OPTS=-Xms128m -Xmx320m -XX:+UseSerialGC -XX:MaxMetaspaceSize=160m -Djenkins.install.runSetupWizard=true -Dhudson.node_monitors.AbstractNodeMonitorDescriptor.periodMinutes=5
         volumes:
             - jenkins_home:/var/jenkins_home
             - /var/run/docker.sock:/var/run/docker.sock
@@ -117,6 +117,26 @@ reverse proxy. Порт `50000` (inbound agents) не публикуется, т
 Папка `jenkins-image/` нужна для сборки кастомного образа Jenkins с Docker CLI и Compose plugin.
 
 ## Статусы GitHub и повтор SCM
+
+### Возврат исполнителя после очистки диска
+
+Jenkins может оставить Built-In Node offline после того, как место уже освобождено:
+по умолчанию Node Monitor обновляется раз в 60 минут. JVM-параметр
+`hudson.node_monitors.AbstractNodeMonitorDescriptor.periodMinutes=5` сокращает
+этот интервал. Это обычная проверка реального состояния, не принудительное online:
+DiskSpaceMonitor и TemporarySpaceMonitor остаются включёнными, их лимиты не меняются.
+CI guard в репозиториях платформы отдельно проверяет свой резерв и память.
+[Официальные системные параметры Jenkins](https://www.jenkins.io/doc/book/managing/system-properties/).
+
+Изменение JVM-параметра требует пересоздания controller без пересборки образа:
+`docker compose up -d --no-build jenkins`. Выполнять только при отсутствии активных
+команд сборки; приложения платформы не перезапускаются. Jenkins home, ключи,
+пользователи и конфигурация джоб остаются в прежнем volume. Pipeline с `disableResume`
+может завершиться при рестарте даже во время ожидания исполнителя: такой build нужно
+повторить обычным способом и проверить его настоящие GitHub-статусы. Автоматическое
+индексирование веток не гарантирует повтор уже собранного SHA.
+
+### Раздельные статусы
 
 У одного репозитория могут быть две multibranch-джобы: backend и frontend. Jenkins отправляет
 первый GitHub status **до** загрузки `Jenkinsfile`; поэтому один общий контекст
